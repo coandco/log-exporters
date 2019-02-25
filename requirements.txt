@@ -1,0 +1,4 @@
+emoji==0.5.1
+pysqlcipher==2.6.10
+python-slugify==2.0.1
+Unidecode==1.0.23
