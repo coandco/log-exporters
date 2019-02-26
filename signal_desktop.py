@@ -13,6 +13,8 @@ from slugify import slugify
 from emoji import demojize
 
 
+DEBUG = False
+
 if sys.platform.startswith('win32'):
     APPDATA = os.getenv('APPDATA')
     CONFIG_PATH = os.path.join(APPDATA, 'Signal', 'config.json')
@@ -59,7 +61,8 @@ def make_name(record):
 def make_text_log(id_list, outgoing_name, message):
     time_string = time.strftime('[%Y-%m-%d %H:%M:%S]', time.localtime(int(message['received_at']) / 1000.0))
 
-    if message["type"] == "incoming":
+    message_type = message.get("type", "unknown")
+    if message_type == "incoming":
         name = id_list[int(message["source"])]
         if message["attachments"]:
             attach_message = "[Attachment(s): %s] " % ", ".join(
@@ -67,7 +70,7 @@ def make_text_log(id_list, outgoing_name, message):
         else:
             attach_message = ''
         body = attach_message + demojize(message.get('body') or "")
-    elif message["type"] == "outgoing":
+    elif message_type == "outgoing":
         name = outgoing_name
         if message["attachments"]:
             attach_message = "[Attachment(s): %s] " % ", ".join(
@@ -75,13 +78,17 @@ def make_text_log(id_list, outgoing_name, message):
         else:
             attach_message = ''
         body = attach_message + demojize(message.get('body') or "")
-    elif message["type"] == "keychange":
+    elif message_type == "keychange":
         name = id_list[int(message["key_changed"])]
         body = "[Safety number changed]"
-    elif message["type"] == "verified-change":
+    elif message_type == "verified-change":
         name = id_list[int(message["verifiedChanged"])]
         body = "[Contact verification status set to %s]" % message["verified"]
     else:
+        if DEBUG:
+            print("Error: message with unknown type")
+            print("Message contents:")
+            print(json.dumps(message, indent=4))
         return None
 
     outstring = u"{} {}: {}".format(time_string, name, body)
