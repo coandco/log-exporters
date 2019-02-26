@@ -4,6 +4,7 @@ import argparse
 import json
 import time
 import os
+import sys
 
 from pysqlcipher import dbapi2 as sqlite
 from contextlib import contextmanager
@@ -12,14 +13,16 @@ from slugify import slugify
 from emoji import demojize
 
 
-if os.name == 'nt':
+if sys.platform.startswith('win32'):
     APPDATA = os.getenv('APPDATA')
     CONFIG_PATH = os.path.join(APPDATA, 'Signal', 'config.json')
     DB_PATH = os.path.join(APPDATA, 'Signal', 'sql', 'db.sqlite')
+elif sys.platform.startswith('darwin'):
+    CONFIG_PATH = os.path.expanduser('~/Library/Application Support/Signal/config.json')
+    DB_PATH = os.path.expanduser('~/Library/Application Support/Signal/sql/db.sqlite')
 else:
     CONFIG_PATH = os.path.expanduser('~/.config/Signal/config.json')
     DB_PATH = os.path.expanduser('~/.config/Signal/sql/db.sqlite')
-
 
 def dict_factory(cursor, row):
     d = {}
