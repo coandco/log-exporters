@@ -89,7 +89,7 @@ def make_text_log(id_list, outgoing_name, message):
 
 
 def process_convo(cur, id_list, convo_id, outgoing_name, output_dir):
-    filename = "%s.txt" % slugify(id_list[convo_id])
+    filename = "%s.txt" % slugify(demojize(id_list[convo_id]))
     with open(os.path.join(output_dir, filename), "w") as outfile:
         cur.execute("select json from messages where conversationId = ? order by sent_at asc", [convo_id])
         convo_objs = [json.loads(x["json"]) for x in cur.fetchall()]
