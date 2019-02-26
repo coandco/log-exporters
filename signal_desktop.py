@@ -53,7 +53,7 @@ def make_name(record):
     elif record["type"] == "group":
         return "Unknown group"
     else:
-        return record["id"]
+        return str(record["id"])
 
 
 def make_text_log(id_list, outgoing_name, message):
