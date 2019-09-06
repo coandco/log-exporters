@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 
+import subprocess
 import mimetypes
 import argparse
+import tempfile
+import sqlite3
+import shutil
 import json
 import time
 import os
 import sys
 
-from pysqlcipher import dbapi2 as sqlite
+from distutils.spawn import find_executable
 from contextlib import contextmanager
 from unidecode import unidecode
 from slugify import slugify
@@ -40,8 +44,24 @@ def dict_factory(cursor, row):
 @contextmanager
 def open_db(key, db_path):
     connection = None
+    tmpfd = None
+    tmpfilename = None
+
+    decryption_sql = (r'''PRAGMA key="x'{0}'"; '''
+                      "ATTACH DATABASE '{1}' as foo KEY ''; "
+                      "SELECT sqlcipher_export('foo'); "
+                      "DETACH DATABASE foo; ")
+
     try:
-        connection = sqlite.connect(db_path)
+        tmpfd, tmpfilename = tempfile.mkstemp()
+        os.close(tmpfd)
+        tmpfd = None
+        decryption_cmd = ['sqlcipher',
+                          db_path,
+                          decryption_sql.format(key, tmpfilename)]
+        subprocess.check_call(decryption_cmd)
+
+        connection = sqlite3.connect(tmpfilename)
         connection.row_factory = dict_factory
         cur = connection.cursor()
         cur.execute("""PRAGMA key="x'%s'";""" % key)
@@ -49,6 +69,10 @@ def open_db(key, db_path):
     finally:
         if connection:
             connection.close()
+        if tmpfd:
+            os.close(tmpfd)
+        if tmpfilename and os.path.isfile(tmpfilename):
+            os.unlink(tmpfilename)
 
 
 def make_name(record):
@@ -168,5 +192,8 @@ if __name__ == "__main__":
     else:
         with open(args.json, 'r') as config:
             resolved_key = json.load(config).get("key")
+
+    if not find_executable('sqlcipher'):
+        parser.error("sqlcipher must be on your path for this script to function")
 
     main(resolved_key, args.db_path, args.i_am, args.extract_attachments, args.attachment_path, args.output_dir)
