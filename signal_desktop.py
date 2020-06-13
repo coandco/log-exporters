@@ -91,7 +91,7 @@ def make_text_log(id_list, outgoing_name, message, local_attachments=False):
 
     message_type = message.get("type", "unknown")
     if message_type == "incoming":
-        name = id_list[int(message["source"])]
+        name = id_list[message["source"]]
         if message["attachments"]:
             attach_message = "[Attachment(s): %s] " % ", ".join(
                 ["%s(%s)" % (x["fileName"] or x["contentType"], x.get("path", "N/A")) for x in message["attachments"]])
@@ -107,10 +107,10 @@ def make_text_log(id_list, outgoing_name, message, local_attachments=False):
             attach_message = ''
         body = attach_message + demojize(message.get('body') or "")
     elif message_type == "keychange":
-        name = id_list[int(message["key_changed"])]
+        name = id_list[message["key_changed"]]
         body = "[Safety number changed]"
     elif message_type == "verified-change":
-        name = id_list[int(message["verifiedChanged"])]
+        name = id_list[message["verifiedChanged"]]
         body = "[Contact verification status set to %s]" % message["verified"]
     else:
         if DEBUG:
@@ -146,14 +146,15 @@ def copy_attachments(convo_name, attachment_path, output_dir, message):
                 extension = "." + atch["contentType"].split("/")[-1]
             if extension == ".jpe":
                 extension = ".jpg"
-            filename = "%s%s" % (atch["id"], extension)
+            identifier = atch[atch["attachment_identifier"]] if "attachment_identifier" in atch.keys() else atch["id"]
+            filename = "%s%s" % (identifier, extension)
         src = os.path.join(attachment_path, atch["path"])
         dest = os.path.join(atch_out_dir, filename)
         shutil.copy2(src, dest)
 
 
-def process_convo(cur, id_list, convo_id, outgoing_name, process_attachments, attachment_path, output_dir):
-    convo_name = slugify(demojize(id_list[convo_id]))
+def process_convo(cur, id_list, convo_map, convo_id, outgoing_name, process_attachments, attachment_path, output_dir):
+    convo_name = slugify(demojize(convo_map[convo_id]))
     filename = "%s.txt" % convo_name
     with open(os.path.join(output_dir, filename), "w") as outfile:
         cur.execute("select json from messages where conversationId = ? order by sent_at asc", [convo_id])
@@ -169,9 +170,11 @@ def process_convo(cur, id_list, convo_id, outgoing_name, process_attachments, at
 def main(key, db_path, outgoing_name, process_attachments, attachment_path, output_dir):
     with open_db(key, db_path) as cur:
         cur.execute("select * from conversations;")
-        id_list = {x["id"]: make_name(x) for x in cur.fetchall()}
-        for convo_id in id_list.keys():
-            process_convo(cur, id_list, convo_id, outgoing_name, process_attachments, attachment_path, output_dir)
+        raw_conversations = cur.fetchall()
+        id_list = {x["e164"]: make_name(x) for x in raw_conversations if x["e164"] is not None}
+        convo_map = {x["id"]: make_name(x) for x in raw_conversations}
+        for convo_id in convo_map.keys():
+            process_convo(cur, id_list, convo_map, convo_id, outgoing_name, process_attachments, attachment_path, output_dir)
 
 
 if __name__ == "__main__":
