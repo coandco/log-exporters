@@ -10,3 +10,7 @@ Additionally, signal_desktop.py requires that the sqlcipher executable be on you
 this is most easily done via their respective package managers (via `apt-get install sqlcipher`,
 `brew install sqlcipher`, and the like).  On Windows, the sqlcipher.exe executable is most easily built on a system 
 with Docker via https://github.com/coandco/docker_build_windows_sqlcipher.
+
+signal_desktop.py also requires Python 3.8.10 or higher, because the 
+SQLite3 format used by Signal Desktop is incompatible with the sqlite3 
+module that comes in versions lower than that.
