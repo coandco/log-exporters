@@ -17,7 +17,6 @@ from unidecode import unidecode
 from slugify import slugify
 from emoji import demojize
 
-
 DEBUG = False
 
 if sys.platform.startswith('win32'):
@@ -94,7 +93,7 @@ def make_text_log(id_list, outgoing_name, message, local_attachments=False):
         name = id_list[message["source"]]
         if message["attachments"]:
             attach_message = "[Attachment(s): %s] " % ", ".join(
-                ["%s(%s)" % (x["fileName"] or x["contentType"], x.get("path", "N/A")) for x in message["attachments"]])
+                ["%s(%s)" % (x.get("fileName", None) or x["contentType"], x.get("path", "N/A")) for x in message["attachments"]])
         else:
             attach_message = ''
         body = attach_message + demojize(message.get('body') or "")
@@ -102,15 +101,15 @@ def make_text_log(id_list, outgoing_name, message, local_attachments=False):
         name = outgoing_name
         if message["attachments"]:
             attach_message = "[Attachment(s): %s] " % ", ".join(
-                ["%s(%s)" % (x["fileName"] or x["contentType"], x.get("path", "N/A")) for x in message["attachments"]])
+                ["%s(%s)" % (x.get("fileName", None) or x["contentType"], x.get("path", "N/A")) for x in message["attachments"]])
         else:
             attach_message = ''
         body = attach_message + demojize(message.get('body') or "")
     elif message_type == "keychange":
-        name = id_list[message["key_changed"]]
+        name = id_list.get(message["key_changed"], "Unknown")
         body = "[Safety number changed]"
     elif message_type == "verified-change":
-        name = id_list[message["verifiedChanged"]]
+        name = id_list.get(message["verifiedChanged"], "Unknown")
         body = "[Contact verification status set to %s]" % message["verified"]
     else:
         if DEBUG:
