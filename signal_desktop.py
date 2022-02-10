@@ -13,6 +13,8 @@ import sys
 
 from distutils.spawn import find_executable
 from contextlib import contextmanager
+from hashlib import md5
+
 from unidecode import unidecode
 from slugify import slugify
 from emoji import demojize
@@ -90,7 +92,8 @@ def make_text_log(id_list, outgoing_name, message, local_attachments=False):
 
     message_type = message.get("type", "unknown")
     if message_type == "incoming":
-        name = id_list[message["source"]]
+        message_id = message.get("source", None) or message.get("sourceUuid", None)
+        name = id_list[message_id] if message_id else "Unknown"
         if message["attachments"]:
             attach_message = "[Attachment(s): %s] " % ", ".join(
                 ["%s(%s)" % (x.get("fileName", None) or x["contentType"], x.get("path", "N/A")) for x in message["attachments"]])
@@ -137,7 +140,7 @@ def copy_attachments(convo_name, attachment_path, output_dir, message):
         if "path" not in atch.keys():
             continue
 
-        if atch["fileName"]:
+        if atch.get("fileName", None):
             filename = atch["fileName"]
         else:
             extension = mimetypes.guess_extension(atch["contentType"])
@@ -145,7 +148,10 @@ def copy_attachments(convo_name, attachment_path, output_dir, message):
                 extension = "." + atch["contentType"].split("/")[-1]
             if extension == ".jpe":
                 extension = ".jpg"
-            identifier = atch[atch["attachment_identifier"]] if "attachment_identifier" in atch.keys() else atch["id"]
+            identifier = (atch.get("attachment_identifier", None) or
+                          atch.get("id", None) or
+                          atch.get("cdnKey", None) or
+                          md5(str(atch)).hexdigest())
             filename = "%s%s" % (identifier, extension)
         src = os.path.join(attachment_path, atch["path"])
         dest = os.path.join(atch_out_dir, filename)
@@ -171,6 +177,7 @@ def main(key, db_path, outgoing_name, process_attachments, attachment_path, outp
         cur.execute("select * from conversations;")
         raw_conversations = cur.fetchall()
         id_list = {x["e164"]: make_name(x) for x in raw_conversations if x["e164"] is not None}
+        id_list.update({x["uuid"]: make_name(x) for x in raw_conversations if x["uuid"] is not None})
         convo_map = {x["id"]: make_name(x) for x in raw_conversations}
         for convo_id in convo_map.keys():
             process_convo(cur, id_list, convo_map, convo_id, outgoing_name, process_attachments, attachment_path, output_dir)
