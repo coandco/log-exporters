@@ -77,14 +77,16 @@ def open_db(key, db_path):
 
 
 def make_name(record):
+    name = str(record["id"])
     if record["name"]:
-        return record["name"]
+        name = record["name"]
     elif record["profileName"]:
-        return "~" + record["profileName"]
+        name = "~" + record["profileName"]
     elif record["type"] == "group":
-        return "Unknown group"
-    else:
-        return str(record["id"])
+        name = "Unknown group"
+    # Names in Signal now use these direction indicators, so we need to remove them or they'll confuse our unidecode
+    chars_to_remove = ['\u2068', '\u2069']
+    return name.translate({ord(c): None for c in chars_to_remove})
 
 
 def make_text_log(id_list, outgoing_name, message, local_attachments=False):
